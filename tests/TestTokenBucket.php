@@ -1,16 +1,15 @@
 <?php declare(strict_types=1);
 namespace RateLimit\Tests;
-include_once "../vendor/autoload.php";
 
 use RateLimit\TokenBucket;
 use RateLimit\Storage\FileStorage;
+use PHPUnit\Framework\TestCase;
 
-class TestTokenBucket 
+class TestTokenBucket extends TestCase
 {
-    private $fileStore = NULL;
-    public function __construct()
+    public function fileStorage()
     {
-        $this->fileStore = new FileStorage('./file.log'); 
+        return new FileStorage('./file.log');
     }
 
     public function testGetSingleToken() 
@@ -19,8 +18,10 @@ class TestTokenBucket
             'identifier' => 'test_get',
             'token_num' => 1,
             'secondes' => 0,
-        ], $this->fileStore);
-        print_r(['xxxx', $tokenBucket->getTokens()]);
+        ], $this->fileStorage());
+
+        $this->assertSame(1, $tokenBucket->getTokens());
+
     }
 
     public function testConsumeManyTokens() 
@@ -29,24 +30,22 @@ class TestTokenBucket
             'identifier' => 'test_consume_many',
             'token_num' => 10000,
             'secondes' => 60,
-        ], $this->fileStore);
+        ], $this->fileStorage());
 
         list($consumed, $timeUntilReady) = $tokenBucket->consume(10000);
-        // $this->assertTrue(is_bool($consumed));
-        // $this->assertTrue(is_numeric($timeUntilReady));
-        // $this->assertTrue($consumed, "Didn't consume a token.");
-        // $this->assertSame(0, $timeUntilReady, "Wasn't ready after consume");
-        // $this->assertEquals(0, $bucket->getTokens());
-        print_r(['token', $tokenBucket->getTokens()]);
+        $this->assertTrue(is_bool($consumed));
+        $this->assertTrue(is_numeric($timeUntilReady));
+        $this->assertTrue($consumed, "不能消费token");
+        $this->assertSame(0, $timeUntilReady, "消费后令牌无回复");
+        $this->assertEquals(0, $tokenBucket->getTokens());
 
 
         list($consumed, $timeUntilReady) = $tokenBucket->consume(10000);
-        // $this->assertTrue(is_bool($consumed));
-        // $this->assertTrue(is_numeric($timeUntilReady));
-        // $this->assertFalse($consumed, "Consumed a token.");
-        // $this->assertEquals(60, $timeUntilReady, "Incorrect ready time");
-        // $this->assertEquals(0, $bucket->getTokens());
-        print_r(['getTokens', $tokenBucket->getTokens()]);
+        $this->assertTrue(is_bool($consumed));
+        $this->assertTrue(is_numeric($timeUntilReady));
+        $this->assertFalse($consumed, "消费token");
+        $this->assertEquals(60, $timeUntilReady, "准备时间不准确");
+        $this->assertEquals(0, $tokenBucket->getTokens());
     }
 
     public function testFailureToConsume() 
@@ -55,10 +54,12 @@ class TestTokenBucket
             'identifier' => 'test_fail_consume',
             'token_num' => 0,
             'secondes' => 0,
-        ], $this->fileStore);
+        ], $this->fileStorage());
 
         list($consumed, $timeUntilReady) = $tokenBucket->consume(1);
-        print_r(['testFailureToConsume', $consumed, $timeUntilReady]);
+        $this->assertTrue(is_bool($consumed));
+        $this->assertSame(null, $timeUntilReady, "准备时间为空，因为无法重新生成token");
+        $this->assertFalse($consumed, "消费失败");
     }
 
     public function testTokenRegeneration() 
@@ -67,16 +68,17 @@ class TestTokenBucket
             'identifier' => 'test_token_regen',
             'token_num' => 1,
             'secondes' => 1,
-        ], $this->fileStore);
+        ], $this->fileStorage());
 
         list($consumed, $timeUntilReady) = $tokenBucket->consume(1);
-        print_r(['testTokenRegeneration_1', $consumed, $timeUntilReady]);
-
+        $this->assertTrue(is_bool($consumed));
+        $this->assertTrue(is_numeric($timeUntilReady));
+        $this->assertTrue($consumed, "不能消费token");
+        $this->assertEquals(0, $timeUntilReady, "消费成功");
         list($consumed, $timeUntilReady) = $tokenBucket->consume(1);
-        print_r(['testTokenRegeneration_2', $consumed, $timeUntilReady]);
-
+        $this->assertFalse($consumed);
         $tokenBucket->setOffset(1);
-        print_r(['token', $tokenBucket->getTokens()]); 
+        $this->assertTrue($tokenBucket->getTokens() > 0, "无法重新生成token");
     }
 
     public function testUpdatedTokensCalculated() 
@@ -86,18 +88,20 @@ class TestTokenBucket
             'identifier' => 'test_updated_tokens_calculated',
             'token_num' => 10,
             'secondes' => 10,
-        ], $this->fileStore);
+        ], $this->fileStorage());
 
         list($consumed, $timeUntilReady) = $tokenBucket->consume(10);
+        $this->assertTrue($consumed);
+        $this->assertEquals(0, $timeUntilReady);
         $tokenBucket->setOffset(5);
 
         list($consumed, $timeUntilReady) = $tokenBucket->consume(10);
-        // print_r(['testUpdatedTokensCalculated_1', $consumed, $timeUntilReady]);
+        $this->assertFalse($consumed);
+        $this->assertEquals(5, $timeUntilReady);
+        $tokenBucket->setOffset(6);
 
-        // $tokenBucket->setOffset(6);
-        // list($consumed, $timeUntilReady) = $tokenBucket->consume(5);
-        // print_r(['testUpdatedTokensCalculated_2', $consumed, $timeUntilReady]);
+        list($consumed, $timeUntilReady) = $tokenBucket->consume(5);
+        $this->assertTrue($consumed);
+        $this->assertEquals(0, $timeUntilReady);
     }
 }
-
-(new TestTokenBucket())->testUpdatedTokensCalculated();

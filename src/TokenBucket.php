@@ -3,6 +3,7 @@ namespace RateLimit;
 
 use RateLimit\Service\TokenRate;
 use RateLimit\Service\StoredBucket;
+use RateLimit\Service\TokenMicrotime;
 use RateLimit\Adapt\Storage;
 
 /***
@@ -23,26 +24,22 @@ class TokenBucket
     private $rate = NULL;
     private $prefix = 'rate_limit_';
     private $identifier = '';
-    private $token = 0;
-    private $secondes = 0;
-    private $offset = 0;
     private $storage = NULL;
-    private $micoretimeId = '';
+    private $micoretimeHandler = NULL;
+    private $offset = 0;
 
     public function __construct($config = [], $storage)
     {
         $this->identifier = $this->prefix . self::array_get($config, 'identifier', 'default');
-        $this->micoretimeId = $this->getMicoretimename($this->identifier);
         $tokens = self::array_get($config, 'token_num', 1000);
         $secondes = self::array_get($config, 'secondes', 1);
         $this->rate = new TokenRate($tokens, $secondes);
+        $this->micoretimeHandler = new TokenMicrotime($storage, $this->identifier);
+        // $this->offsetHandler = new TokenOffset($storage, $this->identifier);
         $this->storage = $storage;
     }
 
-    public function getMicoretimename($identifier)
-    {
-        return $identifier . '_micoretime';
-    }
+    
 
     /**
      * 令牌消费
@@ -92,7 +89,6 @@ class TokenBucket
         $microtime = $this->microtime();
         $timeDiff = $microtime - $lastConsume;
         $tokens += $timeDiff * $this->rate->getRate();
-        // print_r(['calculateCurrentTokens', $microtime, $lastConsume, $timeDiff, $tokens, $this->rate->getTokens()]);
         return min($this->rate->getTokens(), $tokens);
     }
 
@@ -149,28 +145,12 @@ class TokenBucket
 
     protected function microtime(): float
     {  
-        $microtime = $this->getMicrotime();
+        $microtime = $this->micoretimeHandler->getMicrotime();
         if (!$microtime) {
             $microtime = microtime(true);
-            $this->saveMicrotime($microtime);
+            $this->micoretimeHandler->saveMicrotime($microtime);
         }
-        
-        if ($microtime + $this->offset == $microtime) {
-            return $microtime;
-        }
-        $newMicrotime = $microtime + $this->offset;
-        $this->saveMicrotime($newMicrotime);
-        return $newMicrotime;
-    }
-
-    private function getMicrotime()
-    {
-        return (float) $this->storage->get($this->micoretimeId);
-    }
-
-    private function saveMicrotime($microtime)
-    {
-        $this->storage->set($this->micoretimeId, $microtime);
+        return ($microtime + $this->offset);
     }
 
     public function setOffset($offset)
