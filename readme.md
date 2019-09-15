@@ -10,4 +10,4 @@
 - 桶中最多存放 b 个令牌，如果桶满了，新放入的令牌会被丢弃
 - 当一个 n 字节的数据包到达时，消耗 n 个令牌，然后发送该数据包
 - 如果桶中可用令牌小于 n，则该数据包将被缓存或丢弃
-![avatar](images/token_bucket.jpeg)
+- ![avatar](images/token_bucket.jpeg)
