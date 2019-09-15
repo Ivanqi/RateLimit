@@ -35,7 +35,6 @@ class TokenBucket
         $secondes = self::array_get($config, 'secondes', 1);
         $this->rate = new TokenRate($tokens, $secondes);
         $this->micoretimeHandler = new TokenMicrotime($storage, $this->identifier);
-        // $this->offsetHandler = new TokenOffset($storage, $this->identifier);
         $this->storage = $storage;
     }
 
