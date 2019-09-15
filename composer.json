@@ -1,0 +1,11 @@
+{
+    "name": "ivan/RateLimit",
+    "require": {
+        "php": ">=7"
+    },
+    "autoload": {
+        "psr-4": {
+            "RateLimit\\": "src"
+        }
+    }
+}
