@@ -14,13 +14,6 @@ use RateLimit\Adapt\Storage;
  */
 class TokenBucket 
 {
-    // $config = [
-    //     'identifier' => '存储标标识',
-    //     'token_num' => 'token总数量',
-    //     'secondes' => 'token限制描述符',
-    //     'rate_mode' => 'token|calculate'
-    // ];
-
     private $rate = NULL;
     private $prefix = 'rate_limit_';
     private $identifier = '';
